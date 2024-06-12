@@ -1,0 +1,182 @@
+﻿@page "/registrarse"
+@inject IServicioUsuario usuarioServicio
+@inject NavigationManager navegacionServicio
+@inject IToastService toastServicio
+@layout LoginLayout
+<style>
+    .custom-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+    .custom-card {
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 1s ease-in-out;
+    }
+    .custom-card-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    .custom-card-header h3 {
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 10px;
+        animation: slideIn 0.5s ease-in-out;
+    }
+    .custom-card-body .form-group {
+        margin-bottom: 40px;
+        position: relative;
+    }
+    .custom-card-body .form-control {
+        width: 100%;
+        padding: 15px;
+        margin-bottom: 30px;
+        font-size: 16px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        transition: border-color 0.3s ease;
+    }
+    .custom-card-body .form-control:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+    .custom-card-body label {
+        position: absolute;
+        top: -25px;
+        left: 15px;
+        font-size: 14px;
+        color: #777;
+        padding: 0 5px;
+        transition: color 0.3s ease;
+    }
+    .custom-card-body .form-control:focus + label,
+    .custom-card-body .form-control:not(:placeholder-shown) + label {
+        color: #007bff;
+    }
+    .custom-card-footer {
+        text-align: center;
+        margin-top: 20px;
+    }
+    .register-btn {
+        width: 100%;
+        padding: 15px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        background-color: #0086a8;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    .register-btn:hover {
+        background-color: #006f89;
+    }
+    .custom-card-footer a {
+        color: #007bff;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    .custom-card-footer a:hover {
+        color: #0056b3;
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @@keyframes slideIn {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    @@media (max-width: 576px) {
+        .custom-card {
+            padding: 15px;
+        }
+    }
+</style>
+
+<div class="custom-container">
+    <div class="custom-card">
+        <div class="custom-card-header">
+            <h3 class="text-center font-weight-light">Crear Cuenta</h3>
+        </div>
+        <div class="custom-card-body">
+            <EditForm Model="u" OnValidSubmit="Guardar">
+                <DataAnnotationsValidator></DataAnnotationsValidator>
+
+                <div class="form-floating mb-3">
+                    <input class="form-control" id="inputNombre" type="text" placeholder="name@example.com" @bind-value="u.NombreCompleto" autocomplete="off" />
+                    <label for="inputNombre">Nombre</label>
+                    <ValidationMessage For="@(() => u.NombreCompleto)" />
+                </div>
+                <div class="form-floating mb-3">
+                    <input class="form-control" id="inputEmail" type="email" placeholder="name@example.com" @bind-value="u.Correo" autocomplete="off" />
+                    <label for="inputEmail">Correo</label>
+                    <ValidationMessage For="@(() => u.Correo)" />
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3 mb-md-0">
+                            <input class="form-control" id="inputPassword" type="password" placeholder="Create a password" @bind-value="u.Clave" autocomplete="off" />
+                            <label for="inputPassword">Contraseña</label>
+                            <ValidationMessage For="@(() => u.Clave)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3 mb-md-0">
+                            <input class="form-control" id="inputPasswordConfirm" type="password" placeholder="Confirm password" @bind-value="u.CClave" autocomplete="off" />
+                            <label for="inputPasswordConfirm">Confirmar Contraseña</label>
+                            <ValidationMessage For="@(() => u.CClave)" />
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 mb-0">
+                    <div class="d-grid"><button class="register-btn" type="submit">Registrarse</button></div>
+                </div>
+            </EditForm>
+        </div>
+        <div class="custom-card-footer text-center py-3">
+            <div class="small"><a href="/login">¿Ya tienes cuenta?</a></div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UsuarioDatos u = new UsuarioDatos();
+
+    // Método para guardar un nuevo usuario
+    private async Task Guardar()
+    {
+        // Verificar si las contraseñas coinciden
+        if (u.Clave != u.CClave)
+        {
+            toastServicio.ShowWarning("Las contraseñas no coinciden");
+            return;
+        }
+
+        // Establecer el rol del usuario como "Cliente"
+        u.Rol = "Cliente";
+
+        // Crear el usuario a través del servicio
+        var respuesta = await usuarioServicio.CrearUsuario(u);
+
+        // Verificar si la respuesta es exitosa
+        if (respuesta.Ok)
+        {
+            toastServicio.ShowSuccess("Cuenta creada");
+            // Redirigir al usuario a la página de inicio de sesión
+            navegacionServicio.NavigateTo("/login");
+        }
+        else
+        {
+            // Mostrar un mensaje de error si la creación de la cuenta falla
+            toastServicio.ShowError("Fallo al crear su cuenta");
+        }
+    }
+}
+

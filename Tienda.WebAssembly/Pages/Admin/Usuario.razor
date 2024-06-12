@@ -1,0 +1,189 @@
+﻿@page "/usuario"
+@page "/usuario/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador")]
+@inject IServicioUsuario usuarioServicio;
+@inject IToastService toastServicio;
+@inject NavigationManager navegacionServicio;
+
+
+<style>
+    h2 {
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    .card {
+        border-radius: 10px;
+    }
+
+    .form-label {
+        font-weight: 500;
+    }
+
+    .form-control, .form-select {
+        border-radius: 5px;
+    }
+
+    .text-danger {
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+
+    .btn-primary {
+        background-color: #0086a8;
+        border-color: #0086a8;
+        color: white;
+    }
+
+        .btn-primary:hover {
+            background-color: #006f89;
+            border-color: #006f89;
+        }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: white;
+    }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+
+    .d-flex {
+        display: flex;
+    }
+
+    .justify-content-between {
+        justify-content: space-between;
+    }
+</style>
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="text-center">@Titulo</h2>
+            <EditForm Model="u" OnValidSubmit="Guardar" class="card p-4 shadow">
+                <DataAnnotationsValidator></DataAnnotationsValidator>
+
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">Nombre</label>
+                    <input type="text" id="nombre" class="form-control" @bind-value="u.NombreCompleto">
+                    <ValidationMessage For="@(() => u.NombreCompleto)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="correo" class="form-label">Correo</label>
+                    <input type="text" id="correo" class="form-control" @bind-value="u.Correo">
+                    <ValidationMessage For="@(() => u.Correo)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="clave" class="form-label">Contraseña</label>
+                    <input type="password" id="clave" class="form-control" @bind-value="u.Clave">
+                    <ValidationMessage For="@(() => u.Clave)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="cclave" class="form-label">Confirmar Contraseña</label>
+                    <input type="password" id="cclave" class="form-control" @bind-value="u.CClave">
+                    <ValidationMessage For="@(() => u.CClave)" class="text-danger" />
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        @btn <i class="fas fa-save"></i>
+                    </button>
+                    <a href="/usuarios" class="btn btn-secondary">
+                        <i class="fas fa-undo"></i> Volver
+                    </a>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    public string Titulo = "Nuevo usuario";
+    public string btn = "Crear usuario";
+    private UsuarioDatos u = new UsuarioDatos();
+
+    // Se ejecuta cuando los parámetros del componente se establecen
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != 0)
+        {
+            Titulo = "Editar usuario";
+            btn = "Editar";
+
+            // Obtener el usuario si el Id no es 0
+            var respuesta = await usuarioServicio.ObtenerUsuario(Id);
+            if (respuesta.Ok)
+            {
+                u = (UsuarioDatos)respuesta.Resultado!;
+                u.CClave = u.Clave;
+            }
+            else
+            {
+                toastServicio.ShowWarning(respuesta.Mensaje);
+            }
+        }
+    }
+
+    // Método para guardar los cambios del usuario
+    private async Task Guardar()
+    {
+        // Validar que las contraseñas coincidan
+        if (u.Clave != u.CClave)
+        {
+            toastServicio.ShowWarning("Las contraseñas son distintas");
+            return;
+        }
+        bool respuesta = true;
+        string mensaje = string.Empty;
+
+        if (Id != 0)
+        {
+            // Actualizar usuario existente
+            var rrespuesta = await usuarioServicio.ActualizarUsuario(u);
+            if (rrespuesta.Ok)
+            {
+                mensaje = "Se modificó el usuario";
+            }
+            else
+            {
+                respuesta = false;
+                mensaje = "Error al editar";
+            }
+        }
+        else
+        {
+            // Crear nuevo usuario
+            u.Rol = "Administrador";
+            var rrespuesta = await usuarioServicio.CrearUsuario(u);
+            if (rrespuesta.Ok)
+            {
+                mensaje = "Se ha creado correctamente";
+            }
+            else
+            {
+                respuesta = false;
+                mensaje = "Error al crear";
+            }
+        }
+
+        // Mostrar mensaje de éxito o advertencia
+        if (respuesta)
+        {
+            toastServicio.ShowSuccess(mensaje);
+            navegacionServicio.NavigateTo("/usuarios");
+        }
+        else
+        {
+            toastServicio.ShowWarning(mensaje);
+        }
+    }
+}

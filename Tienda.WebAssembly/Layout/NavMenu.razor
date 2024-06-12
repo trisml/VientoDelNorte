@@ -1,0 +1,130 @@
+﻿@inject IServicioCarrito carritoServicio
+@using Tienda.WebAssembly.Extensiones
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject SweetAlertService sweetServicio
+@inject NavigationManager navegacionServicio
+@inject AuthenticationStateProvider autenticacionServicio
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+<nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-light">
+    <div class="container">
+        <a class="navbar-brand" runat="server" href="#">
+            <img style="max-height: 50px; max-width: 110px;" src="/logoweb.jpg" />
+        </a>
+        <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" title="Alternar navegación" aria-controls="navbarSupportedContent"
+                aria-expanded="false" aria-label="Toggle navigation" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="@NavMenuCssClass navbar-collapse d-sm-inline-flex justify-content-between">
+            <ul class="navbar-nav me-auto mb-lg-0 ms-lg-4">
+                <AuthorizeView Roles="Administrador">
+                    <li class="nav-item dropdown" @onclick="ToggleAdminMenu">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" aria-expanded="false">
+                            Admin
+                        </a>
+                        <ul class="dropdown-menu @AdminMenuCssClass" aria-labelledby="adminDropdown">
+                            <li><NavLink class="dropdown-item" href="usuarios"> Usuarios</NavLink></li>
+                            <li><NavLink class="dropdown-item" href="categorias"> Categorias</NavLink></li>
+                            <li><NavLink class="dropdown-item" href="productos"> Productos</NavLink></li>
+                        </ul>
+                    </li>
+                </AuthorizeView>
+                <AuthorizeView>
+                    <li class="nav-item"><NavLink class="nav-link" href="mispedidos">Mis pedidos</NavLink></li>
+                </AuthorizeView>
+                <li class="nav-item"><NavLink class="nav-link" href="catalogo"> Tienda</NavLink></li>
+                <li class="nav-item"><NavLink class="nav-link" href="/contacto"> Sobre nosotros</NavLink></li>
+            </ul>
+            <AuthorizeView>
+                <Authorized>
+                    <span class="navbar-text me-3 mr-2">
+                        @context.User.Claims.Where(c => c.Type == ClaimTypes.Email).Select(c => c.Value).SingleOrDefault()
+                    </span>
+                </Authorized>
+            </AuthorizeView>
+            <a class="btn btn-outline-dark ms-auto ms-md-0 me-3" href="/carrito">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="badge bg-dark text-white ms-1 rounded-pill">@cantidadCarrito()</span>
+            </a>
+
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn btn-outline-dark ms-auto ms-md-0 me-3" @onclick="logout" type="button"><i class="fas fa-sign-out-alt"></i></button>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="btn btn-outline-dark ms-auto ms-md-0 me-3" href="/login"><i class="fa fa-sign"></i></a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</nav>
+
+@code {
+    private bool collapseNavMenu = true;
+    private bool collapseAdminMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private string? AdminMenuCssClass => collapseAdminMenu ? "" : "show";
+
+    // Alterna el estado del menú de navegación.
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    // Alterna el estado del menú de admin.
+    private void ToggleAdminMenu()
+    {
+        collapseAdminMenu = !collapseAdminMenu;
+    }
+
+    // Actualiza la vista cuando cambian los productos del carrito.
+    protected override void OnInitialized()
+    {
+        carritoServicio.MostrarProductos += StateHasChanged;
+    }
+
+
+    // Devuelve la cantidad de productos en el carrito.
+    private int cantidadCarrito()
+    {
+        return carritoServicio.ContarProductos();
+    }
+
+    // Maneja el proceso de cerrar sesión con una alerta de confirmación.
+    private async Task logout()
+    {
+        SweetAlertResult resultado = await sweetServicio.FireAsync(new SweetAlertOptions
+            {
+                Title = "<h3 style='color:#d33;'>¿Deseas cerrar sesión?</h3>",
+                Html = "<p>¿Estás seguro de que quieres cerrar sesión?</p>" +
+                               "<p>Se perderán todos los cambios no guardados.</p>",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = "<i class='fa fa-sign-out-alt'></i> Sí, cerrar sesión",
+                CancelButtonText = "<i class='fa fa-times'></i> No, permanecer",
+                ButtonsStyling = false,
+                CustomClass = new SweetAlertCustomClass
+                {
+                    ConfirmButton = "btn btn-danger btn-lg me-3",
+                    CancelButton = "btn btn-secondary btn-lg"
+                },
+                Background = "#f8f9fa",
+                Padding = "1.5rem",
+                AllowOutsideClick = false,
+                AllowEscapeKey = true,
+                AllowEnterKey = true,
+                ReverseButtons = true,
+                Timer = 10000,
+                TimerProgressBar = true
+            });
+
+        if (resultado.IsConfirmed)
+        {
+            var autenticacionExt = (AutenticacionExt)autenticacionServicio;
+            await autenticacionExt.EstadoAut(null);
+            navegacionServicio.NavigateTo("/", true);  // Navega a la página principal después de cerrar sesión
+        }
+    }
+}

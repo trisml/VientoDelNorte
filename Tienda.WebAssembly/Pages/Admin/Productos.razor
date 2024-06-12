@@ -1,0 +1,230 @@
+﻿@page "/productos"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador")]
+@inject IServicioProducto productoServicio;
+@inject IToastService toastServicio;
+@inject SweetAlertService sweetServicio;
+<style>
+    .btn {
+        height: 38px;
+        line-height: 1.5;
+    }
+
+    .input-group .form-control {
+        height: 38px;
+    }
+
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-img-top {
+        max-height: 200px;
+        object-fit: cover;
+    }
+
+    .badge {
+        font-size: 0.8em;
+    }
+
+    .custom-btn-sm {
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .custom-btn-outline-primary {
+        border: 1px solid #0086a8;
+        color: #0086a8;
+        background: transparent;
+    }
+
+        .custom-btn-outline-primary:hover {
+            background-color: #0086a8;
+            color: white;
+        }
+
+    .custom-btn-outline-danger {
+        border: 1px solid #dc3545;
+        color: #dc3545;
+        background: transparent;
+    }
+
+        .custom-btn-outline-danger:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+
+    .card-footer {
+        background-color: #ffffff;
+        border-top: none;
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .card-title {
+        font-weight: bold;
+    }
+
+    .text-danger {
+        color: #dc3545 !important;
+    }
+
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    .btn-primary {
+        background-color: #0086a8;
+        border-color: #0086a8;
+        color: white;
+    }
+
+        .btn-primary:hover {
+            background-color: #006f89;
+            border-color: #006f89;
+        }
+</style>
+
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-12 col-md-3 mb-2">
+            <a href="/producto" class="btn btn-primary w-100">
+                <i class="fas fa-plus"></i>
+            </a>
+        </div>
+        <div class="col-12 col-md-9">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Buscar producto..." @bind-value="buscar">
+                <button class="btn btn-primary" type="button" @onclick="(async()=> await MostrarProductos(buscar))">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        @if (lista != null)
+        {
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+                @foreach (var producto in lista)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            @if (DateTime.Now < producto.FechaCreacion.Value.AddDays(10))
+                            {
+                                <div class="badge bg-primary position-absolute top-0 end-0 m-2">Nuevo</div>
+                            }
+
+                            <img src="@producto.Imagen" class="card-img-top" alt="@producto.Nombre">
+
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title text-center">@producto.Nombre</h5>
+                                @if (producto.PrecioOferta != 0 && producto.PrecioOferta < producto.Precio)
+                                {
+                                    <p class="card-text text-muted text-decoration-line-through text-center">@producto.Precio €</p>
+                                    <p class="card-text text-danger fw-bold text-center">@producto.PrecioOferta €</p>
+                                }
+                                else
+                                {
+                                    <p class="card-text text-center">@producto.Precio €</p>
+                                }
+                            </div>
+                            <div class="card-footer d-flex justify-content-between">
+                                <a href="/producto/@producto.IdProducto" class="custom-btn-sm custom-btn-outline-primary" aria-label="Editar producto">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="custom-btn-sm custom-btn-outline-danger" @onclick="(async () => await Eliminar(producto))" aria-label="Eliminar producto">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="d-flex justify-content-center align-items-center" role="status">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<ProductoDatos>? lista = null;
+    private string buscar = "";
+
+    // Método para obtener y mostrar la lista de productos
+    private async Task MostrarProductos(string busqueda = "")
+    {
+        var respuesta = await productoServicio.ListarProductos(busqueda);
+        if (respuesta.Ok)
+        {
+            lista = (List<ProductoDatos>)respuesta.Resultado!;
+        }
+        else
+        {
+            lista = new List<ProductoDatos>();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Inicializa la lista de productos 
+        await MostrarProductos();
+    }
+
+    // Método para eliminar un producto
+    private async Task Eliminar(ProductoDatos p)
+    {
+        SweetAlertResult resultado = await sweetServicio.FireAsync(new SweetAlertOptions
+            {
+                Title = "<h3 style='color:#d33;'>¿Estás seguro?</h3>",
+                Html = $"<p>Estás a punto de eliminar el producto: <strong>{p.Nombre}</strong></p>" +
+                       "<p>Esta acción <span style='color:red;'>no</span> se puede deshacer.</p>",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = "<i class='fa fa-trash'></i> Eliminar",
+                CancelButtonText = "<i class='fa fa-times'></i> Cancelar",
+                ButtonsStyling = false,
+                CustomClass = new SweetAlertCustomClass
+                {
+                    ConfirmButton = "btn btn-danger btn-lg p-2 pb-3",
+                    CancelButton = "btn btn-secondary btn-lg p-2 pb-3"
+                },
+                Background = "#f8f9fa",
+                Padding = "1.5rem",
+                Timer = 10000,
+                TimerProgressBar = true,
+                AllowOutsideClick = false,
+                AllowEscapeKey = true,
+                AllowEnterKey = true,
+                ReverseButtons = true
+            });
+
+        if (resultado.IsConfirmed)
+        {
+            var respuesta = await productoServicio.EliminarProducto(p.IdProducto);
+            if (respuesta.Ok)
+            {
+                await MostrarProductos();
+                toastServicio.ShowSuccess("Producto eliminado");
+            }
+            else
+            {
+                toastServicio.ShowWarning(respuesta.Mensaje);
+            }
+        }
+    }
+}
+

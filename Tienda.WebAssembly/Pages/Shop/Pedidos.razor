@@ -1,0 +1,311 @@
+﻿@page "/mispedidos"
+@using System.Security.Claims
+@using Tienda.Datos
+@using Tienda.WebAssembly.Servicios.Interfaces
+@inject IServicioProducto ProductoServicio
+@inject IServicioPedido PedidoServicio
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthenticationStateProvider
+
+<style>
+    .custom-container {
+        max-width: 900px;
+        margin: auto;
+        padding: 20px;
+    }
+
+    .custom-title {
+        text-align: center;
+        font-size: 2.5rem;
+        color: #0086a8;
+        margin-bottom: 30px;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        font-weight: bold;
+        border-bottom: 2px solid #0086a8;
+        padding-bottom: 10px;
+    }
+
+    .custom-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        background: #fff;
+        transition: transform 0.3s;
+    }
+
+    .custom-card:hover {
+        transform: scale(1.02);
+    }
+
+    .custom-card-body {
+        padding: 20px;
+    }
+
+    .custom-card-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #0086a8;
+    }
+
+    .custom-card-text {
+        font-size: 1rem;
+        color: #555;
+    }
+
+    .custom-card-subtitle {
+        font-size: 1rem;
+        color: #999;
+        margin-top: 20px;
+    }
+
+    .custom-list-group {
+        margin-top: 10px;
+    }
+
+    .custom-list-group-item {
+        border: 0;
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .custom-list-group-item:last-child {
+        border-bottom: none;
+    }
+
+    .custom-no-data {
+        text-align: center;
+        font-size: 1.2rem;
+        color: #999;
+        margin-top: 20px;
+    }
+
+    .custom-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100px;
+    }
+
+    .date-filter {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .date-filter div {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .date-filter label {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .date-filter input,
+    .date-filter button {
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        height: 38px;
+    }
+
+    .filter-button {
+        align-self: flex-end;
+        padding: 5px 20px;
+        background-color: #0086a8;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .filter-button:hover {
+        background-color: #006f89;
+    }
+
+    @@media (max-width: 768px) {
+        .custom-title {
+            font-size: 2rem;
+        }
+
+        .custom-card-title {
+            font-size: 1.25rem;
+        }
+
+        .custom-card-text {
+            font-size: 0.875rem;
+        }
+
+        .custom-card-subtitle {
+            font-size: 0.875rem;
+        }
+
+        .custom-card-body {
+            padding: 10px;
+        }
+
+        .date-filter {
+            gap: 10px;
+        }
+
+        .filter-button {
+            padding: 5px 10px;
+        }
+    }
+</style>
+<div class="custom-container">
+    <h3 class="custom-title">Mis Pedidos</h3>
+
+    <div class="date-filter">
+        <div>
+            <label for="fechaInicio">Fecha de inicio:</label>
+            <input type="date" id="fechaInicio" @bind="fechaInicio" />
+        </div>
+        <div>
+            <label for="fechaFin">Fecha de fin:</label>
+            <input type="date" id="fechaFin" @bind="fechaFin" />
+        </div>
+        <button @onclick="FiltrarPedidos" class="filter-button">Filtrar</button>
+    </div>
+
+    @if (pedidos == null)
+    {
+        <div class="custom-spinner">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+    else if (pedidosFiltrados.Count == 0)
+    {
+        <p class="custom-no-data">No hay pedidos.</p>
+    }
+    else
+    {
+        <ul class="list-unstyled">
+            @foreach (var pedido in pedidosFiltrados)
+            {
+                <li>
+                    <div class="custom-card">
+                        <div class="custom-card-body">
+                            <h5 class="custom-card-title">Pedido ID: @pedido.IdPedido</h5>
+                            <p class="custom-card-text">
+                                <b>Total:</b> @pedido.Total<br />
+                                <b>Fecha:</b> @pedido.FechaCreacion
+                            </p>
+                            <h6 class="custom-card-subtitle">Detalle:</h6>
+                            <ul class="list-group custom-list-group list-group-flush">
+                                @foreach (var detalle in pedido.DetallePedidos)
+                                {
+                                    <li class="list-group-item custom-list-group-item">
+                                        <b>Producto:</b> @detalle.ProductoNombre<br />
+                                        <b>Cantidad:</b> @detalle.Cantidad<br />
+                                        <b>Total:</b> @detalle.Total
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+
+@code {
+    private List<PedidoDatos> pedidos; // Lista de todos los pedidos
+    private List<PedidoDatos> pedidosFiltrados; // Lista de pedidos filtrados
+    private DateTime? fechaInicio; // Fecha de inicio para el filtro
+    private DateTime? fechaFin; // Fecha de fin para el filtro
+
+    // Método que se ejecuta al inicializar el componente
+    protected override async Task OnInitializedAsync()
+    {
+        // Obtiene el estado de autenticación actual del usuario
+        var estadoAutenticacion = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var usuario = estadoAutenticacion.User;
+
+        // Verifica si el usuario está autenticado
+        if (usuario.Identity.IsAuthenticated)
+        {
+            // Obtiene el ID del usuario de los claims
+            var idUsuarioClaim = usuario.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+            // Intenta convertir el ID del usuario a un entero
+            if (int.TryParse(idUsuarioClaim, out int idUsuario))
+            {
+                // Llama al servicio de pedidos para obtener los pedidos del usuario
+                var respuesta = await PedidoServicio.ListarPedidosPorUsuario(idUsuario);
+
+                // Si la respuesta es exitosa, procesa los pedidos
+                if (respuesta.Ok)
+                {
+                    pedidos = respuesta.Resultado;
+
+                    // Itera sobre cada pedido para obtener los detalles de los productos
+                    foreach (var pedido in pedidos)
+                    {
+                        foreach (var detalles in pedido.DetallePedidos)
+                        {
+                            // Llama al servicio de productos para obtener el nombre del producto
+                            var productoRespuesta = await ProductoServicio.ObtenerProducto(detalles.IdProducto.Value);
+
+                            // Si la respuesta es exitosa, asigna el nombre del producto
+                            if (productoRespuesta.Ok)
+                            {
+                                detalles.ProductoNombre = productoRespuesta.Resultado.Nombre;
+                            }
+                            else
+                            {
+                                // Si no se encuentra el producto, asigna un mensaje de error
+                                detalles.ProductoNombre = "Producto no encontrado";
+                            }
+                        }
+                    }
+
+                    // Copia la lista de pedidos a la lista de pedidos filtrados
+                    pedidosFiltrados = new List<PedidoDatos>(pedidos);
+                }
+                else
+                {
+                    // Si la respuesta no es exitosa, inicializa la lista de pedidos como vacía
+                    pedidos = new List<PedidoDatos>();
+                }
+            }
+            else
+            {
+                // Si no se puede convertir el ID del usuario, inicializa la lista de pedidos como vacía
+                pedidos = new List<PedidoDatos>();
+            }
+        }
+        else
+        {
+            // Si el usuario no está autenticado, inicializa la lista de pedidos como vacía
+            pedidos = new List<PedidoDatos>();
+        }
+    }
+
+    // Método para filtrar los pedidos por fecha de inicio y fin
+    private void FiltrarPedidos()
+    {
+        if (fechaInicio.HasValue && fechaFin.HasValue)
+        {
+            pedidosFiltrados = pedidos
+                .Where(p => p.FechaCreacion >= fechaInicio.Value.Date && p.FechaCreacion <= fechaFin.Value.Date)
+                .ToList();
+        }
+        else
+        {
+            pedidosFiltrados = new List<PedidoDatos>(pedidos);
+        }
+    }
+}
+

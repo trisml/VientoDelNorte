@@ -1,0 +1,193 @@
+﻿@page "/login"
+@layout LoginLayout
+@inject IServicioUsuario usuarioServicio
+@inject NavigationManager navegacionServicio
+@inject IToastService toastServicio
+@inject AuthenticationStateProvider autenticacionServicio
+@using Tienda.WebAssembly.Extensiones;
+@using Microsoft.AspNetCore.Components.Authorization;
+
+
+<style>
+
+    .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 1s ease-in-out;
+    }
+
+    .login-box {
+        width: 100%;
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .login-header h3 {
+        font-size: 24px;
+        color: #333;
+        margin-bottom: 10px;
+        animation: slideIn 0.5s ease-in-out;
+    }
+
+    .login-form .form-group {
+        margin-bottom: 40px;
+        position: relative;
+    }
+
+    .login-form .form-control {
+        width: 100%;
+        padding: 15px;
+        font-size: 16px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        transition: border-color 0.3s ease;
+    }
+
+    .login-form .form-control:focus {
+        border-color: #007bff;
+        outline: none;
+    }
+
+    .login-form label {
+        position: absolute;
+        top: -25px;
+        left: 15px;
+        font-size: 14px;
+        color: #777;
+        background: white;
+        padding: 0 5px;
+        transition: color 0.3s ease;
+    }
+
+    .login-form .form-control:focus + label,
+    .login-form .form-control:not(:placeholder-shown) + label {
+        color: #007bff;
+    }
+
+    .login-form .btn {
+        width: 100%;
+        padding: 15px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        background-color: #0086a8;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .login-form .btn:hover {
+        background-color: #006f89;
+    }
+
+    .register-link {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .register-link a {
+        color: #007bff;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    .register-link a:hover {
+        color: #0056b3;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @@keyframes slideIn {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    @@media (max-width: 576px) {
+        .login-container {
+            padding: 15px;
+        }
+    }
+</style>
+
+<div class="container">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h3>Login</h3>
+            </div>
+            <div class="login-form">
+                <EditForm Model="l" OnValidSubmit="Inicio">
+                    <DataAnnotationsValidator></DataAnnotationsValidator>
+                    <div class="form-group">
+                        <input id="inputEmail" class="form-control" type="email" placeholder="admin@example.com" @bind-value="l.Correo" autocomplete="off" />
+                        <label for="inputEmail">Correo</label>
+                        <ValidationMessage For="@(()=>l.Correo)" />
+                    </div>
+                    <div class="form-group">
+                        <input id="inputPassword" class="form-control" type="password" placeholder="123" @bind-value="l.Clave" autocomplete="off" />
+                        <label for="inputPassword">Contraseña</label>
+                        <ValidationMessage For="@(()=>l.Clave)" />
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn">Ingresar</button>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="register-link">
+                <div><a href="/registrarse">¿No tienes una cuenta?</a></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginDatos l = new LoginDatos();
+
+    // Método para iniciar sesión
+    private async Task Inicio()
+    {
+        // Autenticar al usuario con las credenciales proporcionadas
+        var respuesta = await usuarioServicio.AutenticarUsuario(l);
+        if (respuesta.Ok)
+        {
+            SesionDatos s = (SesionDatos)respuesta.Resultado;
+
+            // Actualizar el estado de autenticación
+            var autenticacionExt = (AutenticacionExt)autenticacionServicio;
+            await autenticacionExt.EstadoAut(s);
+
+            // Redirigir al usuario según su rol
+            if (s.Rol.ToLower() == "cliente")
+            {
+                navegacionServicio.NavigateTo("/catalogo");
+            }
+            else
+            {
+                navegacionServicio.NavigateTo("/");
+            }
+        }
+        else
+        {
+            // Mostrar un mensaje de advertencia si la autenticación falla
+            toastServicio.ShowWarning(respuesta.Mensaje!);
+        }
+    }
+}
+

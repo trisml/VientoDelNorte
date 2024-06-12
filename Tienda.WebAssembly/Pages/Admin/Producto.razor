@@ -1,0 +1,249 @@
+﻿@page "/producto"
+@page "/producto/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador")]
+@inject IServicioProducto productoServicio;
+@inject IToastService toastServicio;
+@inject NavigationManager navegacionServicio;
+@inject IServicioCategoria categoriaServicio;
+<style>
+
+    h2 {
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    .card {
+        border-radius: 10px;
+    }
+
+    .form-label {
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        background-color: #0086a8;
+        border-color: #0086a8;
+    }
+
+        .btn-primary:hover {
+            background-color: #006f89;
+            border-color: #006f89;
+        }
+
+    .form-control, .form-select {
+        border-radius: 5px;
+    }
+
+    .text-danger {
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: white;
+    }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+
+    .d-flex {
+        display: flex;
+    }
+
+    .justify-content-between {
+        justify-content: space-between;
+    }
+</style>
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="text-center">@Titulo</h2>
+            <EditForm Model="p" OnValidSubmit="Guardar" class="card p-4 shadow">
+                <DataAnnotationsValidator></DataAnnotationsValidator>
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">Nombre</label>
+                    <input type="text" id="nombre" class="form-control" @bind-value="p.Nombre">
+                    <ValidationMessage For="@(() => p.Nombre)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="descripcion" class="form-label">Descripcion</label>
+                    <textarea id="descripcion" class="form-control" @bind="p.Descripcion"></textarea>
+                    <ValidationMessage For="@(() => p.Descripcion)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="categoria" class="form-label">Categoria</label>
+                    <select id="categoria" class="form-select" value="@p.IdCategoria" @onchange="CCategoria">
+                        @foreach (var producto in listaCategoria)
+                        {
+                            <option value="@producto.IdCategoria">@producto.Nombre</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="precio" class="form-label">Precio</label>
+                    <input type="number" id="precio" class="form-control" @bind-value="p.Precio">
+                    <ValidationMessage For="@(() => p.Precio)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="precio-oferta" class="form-label">Precio Oferta</label>
+                    <input type="number" id="precio-oferta" class="form-control" @bind-value="p.PrecioOferta">
+                    <ValidationMessage For="@(() => p.PrecioOferta)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="cantidad" class="form-label">Cantidad</label>
+                    <input type="number" id="cantidad" class="form-control" @bind-value="p.Cantidad">
+                    <ValidationMessage For="@(() => p.Cantidad)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="imagen" class="form-label">Imagen</label>
+                    <InputFile id="imagen" class="form-control" type="file" accept="image/png, image/gif, image/jpeg" OnChange="CImagen"></InputFile>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        @btn <i class="fas fa-save"></i>
+                    </button>
+                    <a href="/productos" class="btn btn-secondary">
+                        Volver <i class="fas fa-undo"></i>
+                    </a>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    public string Titulo = "Nuevo producto";
+    public string btn = "Crear producto";
+    private ProductoDatos p = new ProductoDatos();
+    private List<CategoriaDatos> listaCategoria = new List<CategoriaDatos>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Obtiene la lista de categorías al inicializar el componente
+        var respuesta = await categoriaServicio.ListarCategorias("");
+        if (respuesta.Ok)
+        {
+            listaCategoria = (List<CategoriaDatos>)respuesta.Resultado!;
+            // Si hay categorías y no se está editando un producto, se selecciona la primera categoría por defecto
+            if (listaCategoria.Any() && Id == 0)
+            {
+                p.IdCategoria = listaCategoria.First().IdCategoria;
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != 0)
+        {
+            // Si se está editando un producto, se cambia el título y el texto del botón
+            Titulo = "Editar producto";
+            btn = "Editar";
+
+            // Obtiene los datos del producto a editar
+            var respuesta = await productoServicio.ObtenerProducto(Id);
+            if (respuesta.Ok)
+            {
+                p = (ProductoDatos)respuesta.Resultado!;
+            }
+            else
+            {
+                toastServicio.ShowWarning(respuesta.Mensaje);
+            }
+        }
+    }
+
+    void CCategoria(ChangeEventArgs e)
+    {
+        // Actualiza la categoría seleccionada para el producto
+        p.IdCategoria = Convert.ToInt32(e.Value.ToString());
+    }
+
+    // Método para cargar y procesar una imagen desde un archivo de entrada.
+    async Task CImagen(InputFileChangeEventArgs e)
+    {
+        // Obtener información del archivo de imagen seleccionado.
+        FileInfo InfoImg = new FileInfo(e.File.Name);
+
+        // Verificar si la extensión del archivo es .jpg o .png.
+        if (InfoImg.Extension.ToLower().Contains(".jpg") || InfoImg.Extension.ToLower().Contains(".png"))
+        {
+            // Obtener el formato MIME de la imagen basado en su extensión.
+            var formato = $"image/{InfoImg.Extension.Replace(".", "")}";
+
+            // Solicitar la imagen redimensionada al tamaño especificado (550x400).
+            var redimension = await e.File.RequestImageFileAsync(formato, 550, 400);
+
+            // Crear un buffer para almacenar los datos de la imagen redimensionada.
+            var buffer = new byte[redimension.Size];
+
+            // Leer los datos de la imagen redimensionada en el buffer.
+            await redimension.OpenReadStream().ReadAsync(buffer);
+
+            // Convertir los datos de la imagen a una cadena Base64.
+            var datosImg = $"data:{formato};base64,{Convert.ToBase64String(buffer)}";
+
+            p.Imagen = datosImg;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        bool respuesta = true;
+        string mensaje = string.Empty;
+
+        if (Id != 0)
+        {
+            // Si se está editando un producto existente
+            var rrespuesta = await productoServicio.ActualizarProducto(p);
+            if (rrespuesta.Ok)
+            {
+                mensaje = "Se modificó el producto";
+            }
+            else
+            {
+                respuesta = false;
+                mensaje = "Error al editar";
+            }
+        }
+        else
+        {
+            // Si se está creando un nuevo producto
+            var rrespuesta = await productoServicio.CrearProducto(p);
+            if (rrespuesta.Ok)
+            {
+                mensaje = "Se ha creado correctamente";
+            }
+            else
+            {
+                respuesta = false;
+                mensaje = "Error al crear";
+            }
+        }
+
+        if (respuesta)
+        {
+            toastServicio.ShowSuccess(mensaje);
+            navegacionServicio.NavigateTo("/productos");
+        }
+        else
+        {
+            toastServicio.ShowWarning(mensaje);
+        }
+    }
+}

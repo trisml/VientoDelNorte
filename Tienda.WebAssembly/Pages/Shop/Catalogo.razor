@@ -1,0 +1,252 @@
+﻿
+@page "/catalogo"
+@inject IServicioProducto productoServicio;
+@inject NavigationManager navegacionServicio;
+@inject IServicioCategoria categoriaServicio;
+<style>
+    .product-card {
+        position: relative;
+        overflow: hidden;
+        border: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease-in-out;
+    }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+    .product-img {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .product-card:hover .product-img {
+        transform: scale(1.1);
+    }
+
+    .product-info {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 1rem;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .product-card:hover .product-info {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .new-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: #4CAF50;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 12px;
+    }
+
+    .category-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .dropdown-menu {
+        min-width: 100%;
+    }
+
+    .card-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .card-text {
+        font-size: 1.25rem;
+    }
+
+    .btn-primary, .custom-btn {
+        background-color: #0086a8;
+        border-color: #0086a8;
+        color: white;
+    }
+
+        .btn-primary:hover, .custom-btn:hover {
+            background-color: #006f89;
+            border-color: #006f89;
+        }
+</style>
+
+<div class="container">
+    <div class="container-fluid p-3">
+        <div class="row mb-4">
+            <div class="col-lg-9 col-md-8 col-12">
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" placeholder="Buscar producto..." @bind-value="buscar">
+                    <button class="btn btn-outline-secondary custom-btn" type="button" @onclick="(async()=> await MostrarCatalogo())">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-4 col-12">
+                <div class="dropdown w-100">
+                    <button class="btn dropdown-toggle w-100 custom-btn" type="button" id="categoryDropdown" aria-expanded="false" @onclick="ToggleCategoriaMenu">
+                        Categorias
+                    </button>
+                    <ul class="dropdown-menu w-100 @CategoriaMenuCssClass" aria-labelledby="categoryDropdown">
+                        @if (listaC != null)
+                        {
+                            @foreach (var boton in listaC)
+                            {
+                                <li class="dropdown-item">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="categoria" id="@boton.IdCategoria" value="@boton.Nombre"
+                                               @onchange="async (ChangeEventArgs e) => await Seleccionar(e, boton.Nombre)"
+                                               checked="@categoria.Equals(boton.Nombre, StringComparison.OrdinalIgnoreCase)">
+                                        <label class="form-check-label" for="@boton.IdCategoria">
+                                            @boton.Nombre
+                                        </label>
+                                    </div>
+                                </li>
+                            }
+                        }
+                        else
+                        {
+                            <li class="dropdown-item d-flex justify-content-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="row">
+                    @if (listaP != null)
+                    {
+                        @foreach (var producto in listaP)
+                        {
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card product-card">
+                                    @if (DateTime.Now < producto.FechaCreacion.Value.AddDays(10))
+                                    {
+                                        <div class="new-badge">Nuevo</div>
+                                    }
+                                    <img src="@producto.Imagen" alt="@producto.Nombre" class="product-img">
+                                    <a href="/detalle/@producto.IdProducto">
+                                        <div class="product-info">
+                                            <h5 class="card-title">@producto.Nombre</h5>
+                                            <p class="card-text">
+                                                @if (producto.PrecioOferta != 0 && producto.PrecioOferta < producto.Precio)
+                                                {
+                                                    <span class="text-muted text-decoration-line-through">@producto.Precio €</span>
+                                                    <span class="text-danger">@producto.PrecioOferta €</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>@producto.Precio €</span>
+                                                }
+                                            </p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<CategoriaDatos>? listaC = null; // Lista para almacenar las categorías
+    private List<ProductoDatos>? listaP = null; // Lista para almacenar los productos
+    private string buscar = ""; // Cadena para la búsqueda de productos
+    private string categoria = "Todos"; // Categoría seleccionada para filtrar productos
+    private bool collapseCategoriaMenu = true; // Estado del menú de categorías
+
+    private string? CategoriaMenuCssClass => collapseCategoriaMenu ? "" : "show";
+
+    // Alterna el estado del menú de categorías.
+    private void ToggleCategoriaMenu()
+    {
+        collapseCategoriaMenu = !collapseCategoriaMenu;
+    }
+    // Método para obtener y mostrar las categorías desde el servicio
+    private async Task MostrarCategorias(string busqueda = "")
+    {
+        var respuesta = await categoriaServicio.ListarCategorias(busqueda);
+        if (respuesta.Ok)
+        {
+            listaC = (List<CategoriaDatos>)respuesta.Resultado!;
+        }
+        else
+        {
+            listaC = new List<CategoriaDatos>();
+        }
+    }
+
+    // Método para obtener y mostrar el catálogo de productos desde el servicio
+    private async Task MostrarCatalogo()
+    {
+        var respuesta = await productoServicio.ObtenerCatalogo(categoria, buscar);
+        if (respuesta.Ok)
+        {
+            listaP = (List<ProductoDatos>)respuesta.Resultado!;
+        }
+        else
+        {
+            listaP = new List<ProductoDatos>();
+        }
+    }
+
+    // Método para seleccionar una categoría y actualizar el catálogo de productos
+    private async Task Seleccionar(ChangeEventArgs e, string nuevaCategoria)
+    {
+        if (categoria.Equals(nuevaCategoria, StringComparison.OrdinalIgnoreCase))
+        {
+            categoria = "Todos"; // Restablecer a "Todos" si la misma categoría se selecciona nuevamente
+        }
+        else
+        {
+            categoria = nuevaCategoria;
+        }
+        buscar = ""; // Limpiar la cadena de búsqueda
+        await MostrarCatalogo(); // Actualizar el catálogo de productos
+    }
+
+    // Método que se ejecuta al inicializar el componente
+    protected override async Task OnInitializedAsync()
+    {
+        await MostrarCategorias(); // Mostrar las categorías al inicializar
+        await MostrarCatalogo(); // Mostrar el catálogo de productos al inicializar
+    }
+}
+

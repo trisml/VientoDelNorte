@@ -1,0 +1,292 @@
+﻿@page "/usuarios"
+@using Microsoft.AspNetCore.Authorization
+@inject IServicioUsuario usuarioServicio;
+@inject IToastService toastServicio;
+@inject SweetAlertService sweetServicio;
+@attribute [Authorize(Roles = "Administrador")]
+<style>
+
+    .btn {
+        height: 38px;
+        line-height: 1.5;
+    }
+
+    .input-group .form-control {
+        height: 38px;
+    }
+
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-img-top {
+        max-height: 200px;
+        object-fit: cover;
+    }
+
+    .badge {
+        font-size: 0.8em;
+    }
+
+    .card-footer {
+        background-color: #ffffff;
+        border-top: none;
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .card-title {
+        font-weight: bold;
+    }
+
+    .text-danger {
+        color: #dc3545 !important;
+    }
+
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    .spinner-border.text-primary {
+        color: #006f89;
+    }
+
+    .custom-container {
+        max-width: 1200px;
+        margin: auto;
+        padding: 20px;
+    }
+
+    .custom-btn-primary {
+        background-color: #0086a8;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+
+        .custom-btn-primary:hover {
+            background-color: #006f89;
+        }
+
+    .custom-input-group {
+        display: flex;
+        width: 100%;
+        max-width: 600px;
+        margin-bottom: 15px;
+        align-items: center;
+    }
+
+        .custom-input-group input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px 0 0 5px;
+            border: 1px solid #ccc;
+        }
+
+        .custom-input-group button {
+            padding: 10px;
+            border-radius: 0 5px 5px 0;
+            border: 1px solid #ccc;
+            background-color: #0086a8;
+            color: white;
+            cursor: pointer;
+        }
+
+            .custom-input-group button:hover {
+                background-color: #006f89;
+            }
+
+    .custom-card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .custom-card-body {
+        padding: 20px;
+        text-align: center;
+    }
+
+    .custom-card-footer {
+        background: transparent;
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .custom-btn-sm {
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background-color: #0086a8;
+        border-color: #0086a8;
+        color: white;
+    }
+
+        .btn-primary:hover {
+            background-color: #006f89;
+            border-color: #006f89;
+        }
+
+    .custom-btn-outline-primary {
+        border: 1px solid #0086a8;
+        color: #0086a8;
+        background: transparent;
+    }
+
+        .custom-btn-outline-primary:hover {
+            background-color: #0086a8;
+            color: white;
+        }
+
+    .custom-btn-outline-danger {
+        border: 1px solid #dc3545;
+        color: #dc3545;
+        background: transparent;
+    }
+
+        .custom-btn-outline-danger:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+</style>
+
+<div class="custom-container mt-5">
+    <div class="row mb-4">
+        <div class="col-12 col-md-3 mb-2">
+            <a href="/usuario" class="btn btn-primary w-100">
+                <i class="fas fa-plus"></i>
+            </a>
+        </div>
+        <div class="col-12 col-md-9">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Buscar usuario..." @bind-value="buscar">
+                <button class="btn btn-primary" type="button" @onclick="(async()=> await MostrarUsuarios(buscar))">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        @if (lista != null)
+        {
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+                @foreach (var usuario in lista)
+                {
+                    <div class="col">
+                        <div class="custom-card h-100 shadow-sm">
+                            <div class="custom-card-body">
+                                <i class="fa fa-user mb-2" style="font-size:40px"></i>
+                                <p><b>Nombre:</b> @usuario.NombreCompleto</p>
+                                <p><b>Correo:</b> @usuario.Correo</p>
+                            </div>
+                            <div class="custom-card-footer">
+                                <a href="/usuario/@usuario.IdUsuario" class="custom-btn-sm custom-btn-outline-primary" aria-label="Editar usuario">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="custom-btn-sm custom-btn-outline-danger" type="button" @onclick="(async () => await Eliminar(usuario))" aria-label="Eliminar usuario">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="d-flex justify-content-center align-items-center" role="status">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<UsuarioDatos>? lista = null;
+    private string buscar = "";
+
+    // Método para obtener la lista de usuarios desde el servicio
+    private async Task MostrarUsuarios(string busqueda = "")
+    {
+        var respuesta = await usuarioServicio.ListarUsuarios("Administrador", busqueda);
+        if (respuesta.Ok)
+        {
+            lista = (List<UsuarioDatos>)respuesta.Resultado!;
+        }
+        else
+        {
+            lista = new List<UsuarioDatos>();
+        }
+    }
+
+    // Se ejecuta al inicializar
+    protected override async Task OnInitializedAsync()
+    {
+        await MostrarUsuarios();
+    }
+
+    // Método para eliminar un usuario
+    private async Task Eliminar(UsuarioDatos u)
+    {
+        SweetAlertResult resultado = await sweetServicio.FireAsync(new SweetAlertOptions
+            {
+                Title = "<h3 style='color:#d33;'>¿Estás seguro?</h3>",
+                Html = $"<p>Estás a punto de eliminar el administrador: <strong>{u.NombreCompleto}</strong></p>" +
+                       "<p>Esta acción <span style='color:red;'>no</span> se puede deshacer.</p>",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = "<i class='fa fa-trash'></i> Eliminar",
+                CancelButtonText = "<i class='fa fa-times'></i> Cancelar",
+                ButtonsStyling = false,
+                CustomClass = new SweetAlertCustomClass
+                {
+                    ConfirmButton = "btn btn-danger btn-lg p-2 pb-3",
+                    CancelButton = "btn btn-secondary btn-lg p-2 pb-3"
+                },
+                Background = "#f8f9fa",
+                Padding = "1.5rem",
+                Timer = 10000,
+                TimerProgressBar = true,
+                AllowOutsideClick = false,
+                AllowEscapeKey = true,
+                AllowEnterKey = true,
+                ReverseButtons = true
+            });
+
+        if (resultado.IsConfirmed)
+        {
+            var respuesta = await usuarioServicio.EliminarUsuario(u.IdUsuario);
+            if (respuesta.Ok)
+            {
+                await MostrarUsuarios();
+                toastServicio.ShowSuccess("Usuario eliminado");
+            }
+            else
+            {
+                toastServicio.ShowWarning(respuesta.Mensaje);
+            }
+        }
+    }
+}

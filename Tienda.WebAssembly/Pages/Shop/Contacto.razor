@@ -1,0 +1,141 @@
+﻿@page "/contacto"
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+    }
+
+    #map {
+        height: 100vh;
+    }
+
+    .shopNames {
+        flex: 1;
+        padding: 2rem;
+        cursor: pointer;
+    }
+
+    @@media (max-width: 700px) {
+
+
+        .shopNames {
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+<div id="map"></div>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAzcOfRv887Ycmkl0v5e5Bd5CCilsOlfO0&callback=initMap" async defer></script>
+<script>
+    var tiendas = [
+        {
+            name: "La Cosmica",
+            lat: 43.54262074042908,
+            lng: -5.662616760432695,
+            address: "Calle Instituto, 23D, Centro, 33201 Gijón, Asturias"
+        },
+        {
+            name: "Tienda Sporting",
+            lat: 43.53719041303031,
+            lng: -5.638593662652282,
+            address: "Calle, Luis Adaro Ruíz Falcó, 33203 Gijón, Asturias"
+        },
+        {
+            name: "Atenea",
+            lat: 43.53633097908881,
+            lng: -5.648507106797939,
+            address: "Av. de la Costa, 136, Gijon-Este, 33203 Gijón, Asturias"
+        },
+        {
+            "name": "Librería Paradiso",
+            "lat": 43.542615,
+            "lng": -5.662390,
+            "address": "Calle La Merced, 28, 33201 Gijón, Asturias"
+        },
+        {
+            "name": "Librería Central",
+            "lat": 43.538540,
+            "lng": -5.663470,
+            "address": "Calle San Bernardo, 31, 33201 Gijón, Asturias"
+        },
+        {
+            "name": "La Buena Letra",
+            "lat": 43.538440,
+            "lng": -5.664310,
+            "address": "Calle Casimiro Velasco, 12, 33201 Gijón, Asturias"
+        },
+        {
+            "name": "Toma 3",
+            "lat": 43.537730,
+            "lng": -5.664770,
+            "address": "Calle Marqués de Casa Valdés, 27, 33202 Gijón, Asturias"
+        },
+        {
+            "name": "El Bosque de la Maga Colibrí",
+            "lat": 43.541990,
+            "lng": -5.655620,
+            "address": "Avenida de Rufo García Rendueles, 9, 33202 Gijón, Asturias"
+        },
+        {
+            "name": "Librerías Campoamor",
+            "lat": 43.532250,
+            "lng": -5.664010,
+            "address": "Calle Tomás Zarracina, 1, 33206 Gijón, Asturias"
+        }
+
+
+    ]
+    var map;
+    var markers = [];
+    var infoWindow;
+    var setListener = () => {
+        document.querySelectorAll(".shop_nombreIndividual").forEach((shopName, index) => {
+            shopName.addEventListener("click", () => {
+                google.maps.event.trigger(markers[index], "click")
+            })
+        })
+    }
+    var createMarker = (coord, name, address) => {
+        var html = `<div style="display: flex; flex-direction:column;"><h3 style=" font-size: 1rem;">${name}</h3>
+                                <p style="font-size: .7rem;">${address}</p></div>`;
+        var marker = new google.maps.Marker({
+            position: coord,
+            map: map,
+        });
+        google.maps.event.addListener(marker, "click", () => {
+            infoWindow.setContent(html);
+            infoWindow.open(map, marker);
+        });
+
+        markers.push(marker);
+    }
+
+    var createLocationMarkers = () => {
+        var bounds = new google.maps.LatLngBounds();
+        tiendas.forEach(tienda => {
+            var coord = new google.maps.LatLng(tienda.lat, tienda.lng);
+            var name = tienda.name;
+            var address = tienda.address;
+            bounds.extend(coord)
+            createMarker(coord, name, address);
+            map.fitBounds(bounds);
+        })
+    }
+
+    function initMap() {
+        var asturias = { lat: 43.3666200, lng: -5.8611200 };
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: asturias,
+            zoom: 11
+        });
+        infoWindow = new google.maps.InfoWindow();
+        createLocationMarkers();
+        displayShopList();
+        setListener();
+    }
+
+</script>
+@code {
+
+}

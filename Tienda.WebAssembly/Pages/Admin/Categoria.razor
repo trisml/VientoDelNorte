@@ -1,0 +1,167 @@
+﻿@page "/categoria"
+@page "/categoria/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador")]
+@inject IServicioCategoria categoriaServicio;
+@inject IToastService toastServicio;
+@inject NavigationManager navegacionServicio;
+
+<style>
+    .custom-container {
+        max-width: 800px;
+        margin: auto;
+        padding: 20px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .custom-title {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #333;
+        margin-top: 10px;
+        text-align: center;
+    }
+
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+
+    .custom-input-group {
+        margin-bottom: 15px;
+    }
+
+    .form-control, .form-select {
+        border-radius: 5px;
+        padding: 10px;
+    }
+
+    .custom-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+    }
+
+        .custom-buttons button {
+            border: none;
+            padding: 10px 20px;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .custom-buttons a {
+            background-color: #6c757d;
+            padding: 10px 20px;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+    .btn-primary, .custom-btn {
+        background-color: #0086a8;
+        border-color: #0086a8;
+        color: white;
+    }
+
+        .btn-primary:hover, .custom-btn:hover {
+            background-color: #006f89;
+            border-color: #006f89;
+        }
+</style>
+
+<div class="custom-container mt-5">
+    <h2 class="custom-title">@Titulo</h2>
+    <EditForm Model="c" OnValidSubmit="Guardar" class="shadow-sm p-4">
+        <DataAnnotationsValidator></DataAnnotationsValidator>
+        <div class="custom-input-group">
+            <label for="nombre" class="form-label">Nombre</label>
+            <input type="text" id="nombre" class="form-control" @bind-value="c.Nombre">
+            <ValidationMessage For="@(() => c.Nombre)" class="text-danger" />
+        </div>
+
+        <div class="custom-buttons">
+            <button type="submit" class="btn btn-primary">@btn <i class="fas fa-save"></i></button>
+            <a href="/categorias" class="btn btn-secondary"><i class="fas fa-undo"></i> Volver</a>
+        </div>
+    </EditForm>
+</div>
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    public string Titulo = "Nueva categoria";
+    public string btn = "Crear categoria";
+    private CategoriaDatos c = new CategoriaDatos();
+
+    // Verifica si el componente se debe inicializar para crear o editar una categoría
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != 0)
+        {
+            Titulo = "Editar categoria";
+            btn = "Editar";
+
+            // Obtener la categoría existente para editar
+            var respuesta = await categoriaServicio.ObtenerCategoria(Id);
+            if (respuesta.Ok)
+            {
+                c = (CategoriaDatos)respuesta.Resultado!;
+            }
+            else
+            {
+                toastServicio.ShowWarning($"Error al obtener la categoría: {respuesta.Mensaje}");
+            }
+        }
+    }
+
+    // Método para guardar o actualizar una categoría
+    private async Task Guardar()
+    {
+        bool exito = true;
+        string mensaje = string.Empty;
+
+        if (Id != 0)
+        {
+            // Actualizar una categoría existente
+            var respuesta = await categoriaServicio.ActualizarCategoria(c);
+            if (respuesta.Ok)
+            {
+                mensaje = "Categoría modificada correctamente";
+            }
+            else
+            {
+                exito = false;
+                mensaje = $"Error al editar la categoría: {respuesta.Mensaje}";
+            }
+        }
+        else
+        {
+            // Crear una nueva categoría
+            var respuesta = await categoriaServicio.CrearCategoria(c);
+            if (respuesta.Ok)
+            {
+                mensaje = "Categoría creada correctamente";
+            }
+            else
+            {
+                exito = false;
+                mensaje = $"Error al crear la categoría: {respuesta.Mensaje}";
+            }
+        }
+
+        // Mostrar mensajes toast según el resultado de la operación
+        if (exito)
+        {
+            toastServicio.ShowSuccess(mensaje);
+            navegacionServicio.NavigateTo("/categorias");
+        }
+        else
+        {
+            toastServicio.ShowWarning(mensaje);
+        }
+    }
+}
+

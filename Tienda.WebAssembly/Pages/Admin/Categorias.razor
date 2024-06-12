@@ -1,0 +1,255 @@
+﻿@page "/categorias"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador")]
+@inject IServicioCategoria categoriaServicio;
+@inject IToastService toastServicio;
+@inject SweetAlertService sweetServicio;
+
+<style>
+
+    .btn {
+        height: 38px;
+        line-height: 1.5;
+    }
+
+    .input-group .form-control {
+        height: 38px;
+    }
+
+    .custom-container {
+        max-width: 1200px;
+        margin: auto;
+        padding: 20px;
+    }
+
+    .custom-btn-primary {
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+        background-color: #0086a8;
+    }
+
+        .custom-btn-primary:hover {
+            background-color: #006f89;
+        }
+
+    .custom-input-group {
+        display: flex;
+        width: 100%;
+        max-width: 600px;
+        margin-bottom: 15px;
+        align-items: center;
+    }
+
+        .custom-input-group input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px 0 0 5px;
+            border: 1px solid #ccc;
+        }
+
+        .custom-input-group button {
+            padding: 10px;
+            border-radius: 0 5px 5px 0;
+            border: 1px solid #ccc;
+            background-color: #0086a8;
+            color: white;
+            cursor: pointer;
+        }
+
+            .custom-input-group button:hover {
+                background-color: #006f89;
+            }
+
+    .custom-card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .custom-card-body {
+        padding: 20px;
+        text-align: center;
+    }
+
+    .custom-card-footer {
+        background: transparent;
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .custom-btn-sm {
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background-color: #0086a8;
+        border-color: #0086a8;
+        color: white;
+    }
+
+        .btn-primary:hover {
+            background-color: #006f89;
+            border-color: #006f89;
+        }
+
+    .custom-btn-outline-primary {
+        border: 1px solid #0086a8;
+        color: #0086a8;
+        background: transparent;
+    }
+
+        .custom-btn-outline-primary:hover {
+            background-color: #0086a8;
+            color: white;
+        }
+
+    .custom-btn-outline-danger {
+        border: 1px solid #dc3545;
+        color: #dc3545;
+        background: transparent;
+    }
+
+        .custom-btn-outline-danger:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+</style>
+
+<div class="custom-container mt-5">
+    <div class="row mb-4">
+        <div class="col-12 col-md-3 mb-2">
+            <a href="/categoria" class="btn btn-primary w-100">
+                <i class="fas fa-plus"></i>
+            </a>
+        </div>
+        <div class="col-12 col-md-9">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Buscar categoria..." @bind-value="buscar">
+                <button class="btn btn-primary" type="button" @onclick="(async()=> await MostrarCategorias(buscar))">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        @if (lista != null)
+        {
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+                @foreach (var categoria in lista)
+                {
+                    <div class="col">
+                        <div class="custom-card h-100 shadow-sm">
+                            <div class="custom-card-body">
+                                <i class="oi oi-folder" style="font-size:50px"></i>
+                                <p><b>Nombre:</b> @categoria.Nombre</p>
+                            </div>
+                            <div class="custom-card-footer">
+                                <a href="/categoria/@categoria.IdCategoria" class="custom-btn-sm custom-btn-outline-primary" aria-label="Editar categoria">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="custom-btn-sm custom-btn-outline-danger" type="button" @onclick="(async () => await Eliminar(categoria))" aria-label="Eliminar categoria">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="d-flex justify-content-center align-items-center" role="status">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+@code {
+    private List<CategoriaDatos>? lista = null;
+    private string buscar = "";
+
+    // Método para mostrar la lista de categorías según una búsqueda
+    private async Task MostrarCategorias(string busqueda = "")
+    {
+        var respuesta = await categoriaServicio.ListarCategorias(busqueda);
+        if (respuesta.Ok)
+        {
+            lista = (List<CategoriaDatos>)respuesta.Resultado!;
+        }
+        else
+        {
+            lista = new List<CategoriaDatos>();
+            toastServicio.ShowWarning($"Error al listar las categorías: {respuesta.Mensaje}");
+        }
+    }
+
+    // Inicializar la lista de categorías cuando el componente se carga
+    protected override async Task OnInitializedAsync()
+    {
+        await MostrarCategorias();
+    }
+
+    // Método para eliminar una categoría
+    private async Task Eliminar(CategoriaDatos c)
+    {
+        SweetAlertResult resultado = await sweetServicio.FireAsync(new SweetAlertOptions
+            {
+                Title = "<h3 style='color:#d33;'>¿Estás seguro?</h3>",
+                Html = $"<p>Estás a punto de eliminar la categoría <strong>{c.Nombre}</strong></p>" +
+                       "<p>Esta acción <span style='color:red;'>no</span> se puede deshacer.</p>",
+                Icon = SweetAlertIcon.Warning,
+                ShowCancelButton = true,
+                ConfirmButtonText = "<i class='fa fa-trash'></i> Eliminar",
+                CancelButtonText = "<i class='fa fa-times'></i> Cancelar",
+                ButtonsStyling = false,
+                CustomClass = new SweetAlertCustomClass
+                {
+                    ConfirmButton = "btn btn-danger btn-lg p-2 pb-3",
+                    CancelButton = "btn btn-secondary btn-lg p-2 pb-3"
+                },
+                Background = "#f8f9fa",
+                Timer = 10000,
+                TimerProgressBar = true,
+                AllowOutsideClick = false,
+                AllowEscapeKey = true,
+                AllowEnterKey = true,
+                ReverseButtons = true
+            });
+
+        if (resultado.IsConfirmed)
+        {
+            // Eliminar la categoría seleccionada
+            var respuesta = await categoriaServicio.EliminarCategoria(c.IdCategoria);
+            if (respuesta.Ok)
+            {
+                await MostrarCategorias(); // Actualizar la lista de categorías
+                toastServicio.ShowSuccess($"Categoría '{c.Nombre}' eliminada correctamente");
+            }
+            else
+            {
+                toastServicio.ShowWarning($"Error al eliminar la categoría: {respuesta.Mensaje}");
+            }
+        }
+    }
+}
+

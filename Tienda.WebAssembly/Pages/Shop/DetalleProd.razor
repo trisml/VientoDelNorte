@@ -1,0 +1,192 @@
+﻿@page "/detalle/{Id:int}"
+
+@inject IServicioProducto productoServicio;
+@inject IServicioCarrito carritoServicio;
+<style>
+    .card-principal {
+        display: flex;
+        gap: 2rem;
+        margin: 2rem;
+        padding: 2rem;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        flex-wrap: wrap;
+    }
+
+    .image-container {
+        flex: 1;
+        text-align: center;
+    }
+
+    .product-image {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        transition: transform 0.2s ease-in-out;
+    }
+
+        .product-image:hover {
+            transform: scale(1.05);
+        }
+
+    .card-producto {
+        flex: 1;
+        padding: 2rem;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    h1 {
+        font-size: 2rem;
+        color: #333;
+        margin-bottom: 1rem;
+    }
+
+    .price-container {
+        margin-bottom: 2rem;
+    }
+
+    .original-price {
+        text-decoration: line-through;
+        color: #b12704;
+        margin-right: 1rem;
+    }
+
+    .offer-price {
+        color: #b12704;
+        font-weight: bold;
+    }
+
+    .price {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .actions-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .quantity-input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .add-to-cart-btn {
+        background-color: #006f89;
+        color: white;
+        border: none;
+        padding: 1rem;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+
+        .add-to-cart-btn:hover {
+            background-color: #006f89;
+        }
+
+    @@media (max-width: 768px) {
+        .card-principal {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .image-container, .card-producto {
+            max-width: 100%;
+        }
+
+        .card-producto {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="card-principal">
+    @if (p != null)
+    {
+        <div class="image-container">
+            <img src="@p.Imagen" alt="@p.Nombre" class="product-image">
+        </div>
+        <div class="card-producto">
+            <h1>@p.Nombre</h1>
+            <div class="price-container">
+                @if (p.PrecioOferta != 0 && p.PrecioOferta < p.Precio)
+                {
+                    <span class="original-price">@p.Precio €</span>
+                    <span class="offer-price">@p.PrecioOferta €</span>
+                }
+                else
+                {
+                    <span class="price">@p.Precio €</span>
+                }
+            </div>
+            <p>@p.Descripcion</p>
+            <div class="actions-container">
+                <label for="quantity">Cantidad:</label>
+                <input id="quantity" type="number" min="1" @bind-value="cantidad" class="quantity-input">
+                <button type="button" @onclick="(async() => await AgregarCarrito(p))" class="add-to-cart-btn">
+                    <i class="fas fa-cart-plus"></i>
+                </button>
+                <a href="/catalogo" class="btn btn-block add-to-cart-btn">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div role="status">
+            <span>Loading...</span>
+        </div>
+    }
+</div>
+
+
+@code {
+    [Parameter]
+    public int Id { get; set; } // Parámetro para obtener el ID del producto
+    private ProductoDatos? p = null; // Producto seleccionado
+    private int cantidad = 1; // Cantidad del producto a agregar al carrito
+
+    // Método que se ejecuta cuando se establecen los parámetros del componente
+    protected override async Task OnParametersSetAsync()
+    {
+        // Obtener los detalles del producto a partir del ID
+        var respuesta = await productoServicio.ObtenerProducto(Id);
+        if (respuesta.Ok)
+        {
+            p = (ProductoDatos)respuesta.Resultado!;
+        }
+    }
+
+    // Método para agregar un producto al carrito
+    private async Task AgregarCarrito(ProductoDatos p)
+    {
+        // Determinar el precio final del producto, teniendo en cuenta posibles ofertas
+        decimal? precioFinal = (p.PrecioOferta != 0 && p.PrecioOferta < p.Precio) ? p.PrecioOferta : p.Precio;
+
+        // Crear una instancia de CarritoDatos con los detalles del producto
+        CarritoDatos carrito = new CarritoDatos()
+            {
+                Producto = p,
+                Cantidad = cantidad,
+                Precio = precioFinal,
+                PrecioTotal = Convert.ToDecimal(cantidad) * precioFinal
+            };
+
+        // Agregar el producto al carrito utilizando el servicio correspondiente
+        await carritoServicio.AgregarAlCarrito(carrito);
+    }
+}
+

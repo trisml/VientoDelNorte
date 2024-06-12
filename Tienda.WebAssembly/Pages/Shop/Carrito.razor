@@ -1,0 +1,374 @@
+﻿@page "/carrito"
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+@inject IServicioCarrito carritoServicio
+@inject IServicioPedido pedidoServicio
+@inject IToastService toastServicio
+@inject NavigationManager navegacionServicio
+
+<style>
+    .custom-card {
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Ligero sombreado */
+    }
+
+    .custom-card-body {
+        padding: 2rem;
+    }
+
+    .custom-btn {
+        background-color: #0086a8;
+        border-color: #0086a8;
+        color: white;
+    }
+
+    .custom-btn:hover {
+        background-color: #006f89;
+        border-color: #006f89;
+    }
+
+    .custom-btn-outline {
+        border-color: #006f89;
+        color: #006f89;
+    }
+
+    .custom-btn-outline:hover {
+        background-color: #006f89;
+        color: white;
+    }
+
+    .custom-form-control-sm {
+        border-radius: 5px;
+    }
+
+    .custom-form-label {
+        font-weight: bold;
+    }
+
+    .custom-card-title {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+
+    .custom-card-text {
+        font-size: 1rem;
+    }
+
+    .custom-product-img {
+        width: 65px;
+        border-radius: 5px;
+    }
+
+    .custom-total-price {
+        font-weight: bold;
+        font-size: 1.5rem;
+    }
+
+    .custom-alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: none;
+    }
+
+    .cart-item {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .cart-item img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .cart-item-details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .cart-item-actions {
+        display: flex;
+        align-items: center;
+    }
+
+    .cart-item-price, .cart-item-total {
+        font-weight: bold;
+        margin: 0 1rem;
+    }
+
+    @@media (max-width: 768px) {
+        .custom-card-body {
+            padding: 1rem;
+        }
+
+        .custom-product-img {
+            width: 50px;
+        }
+
+        .custom-card-title {
+            font-size: 1rem;
+        }
+
+        .custom-card-text {
+            font-size: 0.875rem;
+        }
+
+        .custom-total-price {
+            font-size: 1.25rem;
+        }
+
+        .cart-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .cart-item-details {
+            align-items: flex-start;
+            margin-top: 1rem;
+        }
+
+        .cart-item-actions {
+            margin-top: 1rem;
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+</style>
+
+<div class="container">
+    <div class="row mt-4">
+        <div class="container py-5 h-100">
+            <div class="row d-flex justify-content-center align-items-center h-100">
+                <div class="col-lg-10">
+                    <div class="card custom-card">
+                        <div class="card-body custom-card-body">
+                            <div class="row">
+                                <div class="col-lg-8">
+                                    <h5 class="mb-3">
+                                        <a href="/catalogo" class="text-body"><i class="fas fa-long-arrow-alt-left me-2"></i>Continua comprando</a>
+                                    </h5>
+                                    <hr>
+                                    <div class="d-flex justify-content-between align-items-center mb-4">
+                                        <div>
+                                            <p class="mb-1">Carrito de la compra</p>
+                                            <p class="mb-0">Tienes @lista.Count productos en el carrito</p>
+                                        </div>
+                                    </div>
+                                    @if (lista.Any())
+                                    {
+                                        foreach (var producto in lista)
+                                        {
+                                            <div class="card mb-3 custom-card">
+                                                <div class="card-body cart-item">
+                                                    <div>
+                                                        <img src="@producto.Producto.Imagen" class="custom-product-img" alt="@producto.Producto.Nombre">
+                                                    </div>
+                                                    <div class="cart-item-details">
+                                                        <h5 class="custom-card-title">@producto.Producto.Nombre</h5>
+                                                    </div>
+                                                    <div class="cart-item-actions">
+                                                        @if (producto.Producto.PrecioOferta != 0 && producto.Producto.PrecioOferta < producto.Producto.Precio)
+                                                        {
+                                                            <span class="text-muted text-decoration-line-through">@producto.Producto.Precio €</span>
+                                                            <span class="text-danger">@producto.Producto.PrecioOferta €</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>@producto.Precio €</span>
+                                                        }
+                                                        <div class="btn-group" role="group">
+                                                            <button type="button" class="btn btn-secondary" @onclick="(() => Disminuir(producto.Producto.IdProducto))">-</button>
+                                                            <input class="form-control text-center custom-form-control-sm" readonly="readonly" style="width:50px" @bind="producto.Cantidad" />
+                                                            <button type="button" class="btn custom-btn" @onclick="(() => Aumentar(producto.Producto.IdProducto))">+</button>
+                                                        </div>
+                                                        <div class="cart-item-total">@producto.PrecioTotal €</div>
+                                                        <a href="/carrito" class="ms-3" @onclick="(async () => await Eliminar(producto.Producto.IdProducto))">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-warning text-center" role="alert">
+                                            No hay productos en el carrito
+                                        </div>
+                                    }
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="card mb-3 custom-card">
+                                        <div class="card-body custom-card-body">
+                                            <EditForm Model="tarjeta" OnValidSubmit="Pagar">
+                                                <DataAnnotationsValidator></DataAnnotationsValidator>
+                                                <div class="mb-3">
+                                                    <label class="custom-form-label">Nombre Titular</label>
+                                                    <input type="text" class="form-control custom-form-control-sm" @bind="tarjeta.Titular" disabled="@desactivado">
+                                                    <ValidationMessage For="@(() => tarjeta.Titular)" />
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="custom-form-label">Número Tarjeta</label>
+                                                    <input type="text" class="form-control custom-form-control-sm" autocomplete="off" @bind="tarjeta.Numero" disabled="@desactivado">
+                                                    <ValidationMessage For="@(() => tarjeta.Numero)" />
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-sm-6 mb-3">
+                                                        <label class="custom-form-label">Caducidad</label>
+                                                        <input type="text" class="form-control custom-form-control-sm" placeholder="MM/YY" autocomplete="off" @bind="tarjeta.Caducidad" disabled="@desactivado">
+                                                        <ValidationMessage For="@(() => tarjeta.Caducidad)" />
+                                                    </div>
+                                                    <div class="col-sm-6 mb-3">
+                                                        <label class="custom-form-label">CVV</label>
+                                                        <input type="text" class="form-control custom-form-control-sm" autocomplete="off" @bind="tarjeta.CVV" disabled="@desactivado">
+                                                        <ValidationMessage For="@(() => tarjeta.CVV)" />
+                                                    </div>
+                                                </div>
+                                                <hr />
+                                                <div class="d-flex justify-content-between">
+                                                    <div>Total a pagar:</div>
+                                                    <div>@(lista.Sum(i => i.PrecioTotal)) €</div>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <div class="d-grid">
+                                                        <button class="btn custom-btn-outline" type="submit" disabled="@desactivado">Procesar pago</button>
+                                                    </div>
+                                                </div>
+                                            </EditForm>
+                                            <AuthorizeView>
+                                                <NotAuthorized>
+                                                    <div class="alert custom-alert-danger mt-3 text-center" role="alert">
+                                                        Debes iniciar sesión
+                                                    </div>
+                                                </NotAuthorized>
+                                            </AuthorizeView>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+    private bool desactivado = true; // Estado para habilitar o deshabilitar ciertos elementos
+    private List<CarritoDatos> lista = new List<CarritoDatos>(); // Lista para almacenar los datos del carrito
+    private decimal? PagoTotal = 0; // Variable para almacenar el total del pago
+    private TarjetaDatos tarjeta = new TarjetaDatos(); // Datos de la tarjeta del usuario
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargar los datos del carrito desde el servicio
+        lista = await carritoServicio.ObtenerCarrito();
+
+        // Obtener el estado de autenticación del usuario
+        var authState = await authenticationState;
+
+        // Habilitar elementos si el usuario está autenticado
+        if (authState.User.Identity.IsAuthenticated)
+        {
+            desactivado = false;
+        }
+    }
+
+    private void Disminuir(int id)
+    {
+        // Obtener el producto en el carrito por su ID
+        CarritoDatos carrito = lista.First(c => c.Producto.IdProducto == id);
+
+        // Disminuir la cantidad del producto si es mayor que 1
+        if (carrito.Cantidad - 1 > 0)
+        {
+            decimal? precioFinal = (carrito.Producto.PrecioOferta != 0 && carrito.Producto.PrecioOferta < carrito.Producto.Precio) ? carrito.Producto.PrecioOferta : carrito.Producto.Precio;
+            carrito.Cantidad--;
+            carrito.PrecioTotal = carrito.Cantidad * precioFinal;
+        }
+    }
+
+    private void Aumentar(int id)
+    {
+        // Obtener el producto en el carrito por su ID
+        CarritoDatos carrito = lista.First(c => c.Producto.IdProducto == id);
+        decimal? precioFinal = (carrito.Producto.PrecioOferta != 0 && carrito.Producto.PrecioOferta < carrito.Producto.Precio) ? carrito.Producto.PrecioOferta : carrito.Producto.Precio;
+        carrito.Cantidad++;
+        carrito.PrecioTotal = carrito.Cantidad * precioFinal;
+    }
+
+    private async Task Eliminar(int id)
+    {
+        // Obtener el producto en el carrito por su ID
+        CarritoDatos carrito = lista.First(c => c.Producto.IdProducto == id);
+
+        // Si el producto existe en el carrito, eliminarlo
+        if (carrito != null)
+        {
+            lista.Remove(carrito);
+            await carritoServicio.EliminarDelCarrito(id);
+        }
+    }
+
+    private async Task Pagar()
+    {
+        // Si no hay productos en el carrito, mostrar una advertencia
+        if (lista.Count == 0)
+        {
+            toastServicio.ShowWarning("No se hallaron productos");
+            return;
+        }
+
+        // Crear la lista de detalles del pedido
+        List<DetallePedidoDatos> detalle = new List<DetallePedidoDatos>();
+        foreach (var producto in lista)
+        {
+            detalle.Add(new DetallePedidoDatos()
+                {
+                    IdProducto = producto.Producto.IdProducto,
+                    Cantidad = producto.Cantidad,
+                    Total = producto.PrecioTotal
+                });
+        }
+
+        // Obtener el ID del usuario autenticado
+        var authState = await authenticationState;
+        string idUsuario = authState.User.Claims.Where(c => c.Type == ClaimTypes.NameIdentifier).Select(c => c.Value).Single();
+
+        // Crear un nuevo pedido con los datos del usuario y los detalles del carrito
+        PedidoDatos p = new PedidoDatos()
+            {
+                IdUsuario = Convert.ToInt32(idUsuario),
+                Total = lista.Sum(c => c.PrecioTotal),
+                DetallePedidos = detalle
+            };
+
+        // Registrar el pedido a través del servicio
+        var respuesta = await pedidoServicio.RegistrarPedido(p);
+
+        // Si el pedido se realiza correctamente, vaciar el carrito y mostrar un mensaje de éxito
+        if (respuesta.Ok)
+        {
+            await carritoServicio.VaciarCarrito();
+            toastServicio.ShowSuccess("Pedido realizado");
+            navegacionServicio.NavigateTo("/catalogo");
+        }
+        else
+        {
+            // Mostrar un mensaje de advertencia si hay un error en el pedido
+            toastServicio.ShowWarning("Error en el pedido");
+        }
+    }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; } // Estado de autenticación del usuario
+}
+
